@@ -8,21 +8,14 @@ function solution(N, number) {
   let answer = -1;
   const memoization = [];
 
-  memoization[1] = new Set();
-  memoization[1].add(N);
   if (N === number) return 1;
 
-  for (let i = 2; i <= 8; i++) {
+  // i = 3
+  // NNN
+  // memo[1] */+- memo[2]
+  // memo[2] */+- memo[1]
+  for (let i = 1; i <= 8; i++) {
     memoization[i] = new Set();
-
-    // i = 2
-    // NN
-    // memo[1] */+- memo[1]
-
-    // i = 3
-    // NNN
-    // memo[1] */+- memo[2]
-    // memo[2] */+- memo[1]
 
     memoization[i].add(getContinuousNumber(N, i));
     for (let iter = 1; iter < i; iter++) {
@@ -53,5 +46,3 @@ function getContinuousNumber(n, cnt) {
 
   return +returnNumber;
 }
-
-console.log(solution(2, 11));
