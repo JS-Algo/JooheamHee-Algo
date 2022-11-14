@@ -1,112 +1,97 @@
-const MissionUtils = require("@woowacourse/mission-utils");
-const STRIKE = 0;
-const BALL = 1;
+const { Console } = require("@woowacourse/mission-utils");
+const { Random } = require("@woowacourse/mission-utils");
+const Lotto = require("./Lotto");
+const {
+  isPurchasePriceToNumber,
+  getTotalProfit,
+} = require("./util/validate/purchase");
+const {
+  LOTTO_PURCHASE_PRICE,
+  INPUT_MESSAGE,
+  ERROR_MESSAGE,
+  RESULT_MESSAGE,
+  STATISTIC,
+  PRIZE_KEY,
+  PRIZE_REWARD,
+  PRIZE_RESULT,
+} = require("./util/const");
 class App {
+  #lotto;
+
+  price;
+  winNumberList = [];
+  lottoList = [];
+  bonusNumber;
+
   constructor() {}
-
   play() {
-    MissionUtils.Console.print("숫자 야구 게임을 시작합니다.");
-
-    const answer = this.getAnswer();
-    this.getInput(answer);
+    this.getPurchasePrice();
   }
-  getAnswer() {
-    const answer = [];
-    while (answer.length < 3) {
-      const randomNumber = MissionUtils.Random.pickNumberInRange(1, 9);
-      if (!answer.includes(randomNumber)) {
-        answer.push(randomNumber);
-      }
-    }
-
-    return answer.join("");
-  }
-  getInput(answer) {
-    MissionUtils.Console.readLine("숫자를 입력해주세요 : ", (userInput) => {
-      const isInputError = this.detectInputError(userInput);
-      if (!isInputError) {
-        this.compareAnswerAndInput(answer, userInput);
-      }
+  // 구입 금액 입력
+  getPurchasePrice() {
+    Console.readLine(INPUT_MESSAGE.PURCHASE_PRICE, (price) => {
+      if (isPurchasePriceToNumber(price))
+        throw new Error(ERROR_MESSAGE.PRICE_NUMBER);
+      this.price = Number(price);
+      this.getLottoList(this.price / LOTTO_PURCHASE_PRICE);
     });
   }
-  compareAnswerAndInput(answer, userInput) {
-    const [strike, ball] = this.getStrikeBall(answer, userInput);
-    this.printCompareResult(strike, ball);
 
-    if (this.isAnswer(strike, ball)) this.restartGame();
-    else this.getInput(answer);
+  // 로또 리스트 가져오기
+  getLottoList(count) {
+    for (let i = 0; i < count; i++) {
+      const numbers = Random.pickUniqueNumbersInRange(1, 45, 6);
+      this.lottoList.push(numbers);
+    }
+    this.printLottoList();
   }
-  getStrikeBall(answer, userInput) {
-    const result = [0, 0];
-    answer = [...answer];
-    userInput = [...userInput];
-
-    answer.forEach((value, idx) => {
-      if (value === userInput[idx]) result[STRIKE]++;
-      else if (userInput.includes(value) && value != userInput[idx])
-        result[BALL]++;
+  // 로또 출력하기
+  printLottoList() {
+    Console.print(RESULT_MESSAGE.RETURN_LOTTO_COUNT(this.lottoList.length));
+    this.lottoList.map((lotto) => Console.print(`[${lotto.join(", ")}]`));
+    this.getWinNumber();
+  }
+  // 당첨 번호 입력하기
+  getWinNumber() {
+    Console.readLine(INPUT_MESSAGE.WIN_NUMBER, (numberString) => {
+      this.winNumberList = numberString
+        .split(",")
+        .map((numStr) => Number(numStr));
+      const lotto = new Lotto(this.winNumberList);
     });
-    return result;
+    this.getBonusNumber();
   }
-
-  printCompareResult(strike, ball) {
-    if (strike === 0 && ball === 0) MissionUtils.Console.print("낫싱");
-    else if (strike === 0 && 1 <= ball && ball <= 3)
-      MissionUtils.Console.print(`${ball}볼`);
-    else if (1 <= strike && strike <= 2 && ball === 0)
-      MissionUtils.Console.print(`${strike}스트라이크`);
-    else if (1 <= strike && strike <= 2 && 1 <= ball && ball <= 2)
-      MissionUtils.Console.print(`${ball}볼 ${strike}스트라이크`);
-    else if (strike === 3 && ball === 0) {
-      MissionUtils.Console.print(`${strike}스트라이크`);
-      MissionUtils.Console.print("3개의 숫자를 모두 맞히셨습니다! 게임 종료");
+  // 보너스 금액 입력
+  getBonusNumber() {
+    Console.readLine(INPUT_MESSAGE.BONUS_NUMBER, (numberString) => {
+      if (isPurchasePriceToNumber(numberString))
+        throw new Error(ERROR_MESSAGE.BONUS_NUMBER);
+      this.bonusNumber = +numberString;
+    });
+    if (this.winNumberList.length != 0) {
+      this.getWinStatistic();
     }
   }
+  getWinStatistic() {
+    this.#lotto = new Lotto(this.winNumberList);
 
-  isAnswer(strike, ball) {
-    if (strike === 3 && ball === 0) return 1;
-    else return 0;
-  }
-  restartGame() {
-    MissionUtils.Console.readLine(
-      "게임을 새로 시작하려면 1, 종료하려면 2를 입력하세요. \n",
-      (userInput) => {
-        if (userInput === "1") {
-          const answer = this.getAnswer();
-          this.getInput(answer);
-        } else if (userInput === "2") {
-          MissionUtils.Console.close();
-        } else {
-          throw new Error("유효하지 않은 값이 입력되었습니다.");
-        }
-      }
+    const winStatistic = this.lottoList.reduce(
+      (acc, lotto) => {
+        acc = this.#lotto.calculateWin(lotto, this.bonusNumber);
+        return acc;
+      },
+      { THREE: 0, FOUR: 0, FIVE: 0, FIVE_BONUS: 0, SIX: 0 }
     );
+    this.printWinStatistic(winStatistic);
   }
-
-  detectInputError(userInput) {
-    userInput = this.removeRepeatInputValue(userInput);
-    if (this.isInputValueError(userInput))
-      throw new Error("유효하지 않은 값이 입력되었습니다.");
-
-    if (userInput.length != 3)
-      throw new Error("유효하지 않은 값이 입력되었습니다.");
-
-    return 0;
-  }
-
-  isInputValueError(userInput) {
-    [...userInput].forEach((value) => {
-      if (value < "1" || value > "9") {
-        return 1;
-      }
+  printWinStatistic(winStatistic) {
+    let profit = 0;
+    Console.print(STATISTIC.WINNING_STATISTIC);
+    PRIZE_KEY.forEach((key) => {
+      Console.print(PRIZE_RESULT[key](winStatistic[key]));
+      profit += PRIZE_REWARD[key] * winStatistic[key];
     });
-
-    return 0;
-  }
-
-  removeRepeatInputValue(userInput) {
-    const userInputSet = new Set([...userInput]);
-    return [...userInputSet];
+    Console.print(STATISTIC.TOTAL_PROFIT(getTotalProfit(this.price, profit)));
   }
 }
 
