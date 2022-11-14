@@ -3,30 +3,38 @@ function solution(genres, plays) {
   let result = [];
   genres.forEach((genre, idx) => {
     if (musicMap.has(genre))
-      musicMap.set(genre, [...musicMap.get(genre), plays[idx]]);
-    else musicMap.set(genre, [plays[idx]]);
+      musicMap.set(genre, [
+        ...musicMap.get(genre),
+        { play: plays[idx], idx: idx },
+      ]);
+    else musicMap.set(genre, [{ play: plays[idx], idx: idx }]);
   });
   // 재생수 높은순서대로 정렬하여 array로 변환
-  let musicMapToArray = [...musicMap].map(([genre, plays]) => [
+  let musicMapToArray = [...musicMap].map(([genre, data]) => [
     genre,
-    plays.sort((a, b) => b - a),
+    data.sort((a, b) => b.play - a.play),
   ]);
 
   // 고유번호 작은 순
-  musicMapToArray = musicMapToArray.map(([genre, playList]) => [
-    genre,
-    playList.sort((a, b) => a === b && plays.indexOf(a) - plays.indexOf(b)),
-  ]);
-  // 재생수 높은 순으로 array 정렬
+  musicMapToArray = musicMapToArray.map(([genre, data]) => {
+    return [genre, data.sort((a, b) => a.play === b.play && a.idx - b.idx)];
+  });
+  // // 재생수 높은 순으로 array 정렬
   musicMapToArray.sort(
-    ([genreA, playsA], [genreB, playsB]) => playsB[0] - playsA[0]
+    ([genreA, dataA], [genreB, dataB]) => dataB[0].play - dataA[0].play
   );
-
-  // 최대 2개
-  musicMapToArray.forEach(([_, playList]) => {
-    playList.forEach((play, idx) => {
-      if (idx <= 1) result.push(plays.indexOf(play));
+  // // 최대 2개
+  musicMapToArray.forEach(([genre, data]) => {
+    data.forEach((info, idx) => {
+      if (idx <= 1) result.push(info.idx);
     });
   });
   return result;
 }
+console.log(
+  solution(
+    ["c", "a", "b", "a", "a", "b", "b", "b", "b", "c", "c", "c", "d"],
+    [1, 500, 9, 600, 501, 800, 500, 300, 2, 2, 1, 2, 100000]
+  )
+);
+//12,5,6,3,4,9,11
